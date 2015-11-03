@@ -18,6 +18,8 @@ const pluginSettings = require('./settings.json');
 const requiredVotesToSkip = pluginSettings.requiredVotesToSkip || 3;
 const requestSongRegex = new RegExp( /^(!|\/)request\s(.+)$/ );
 
+const brainKey = 'plugin-youtube';
+
 module.exports = [{
 	// Reset current song index and playing boolean
     types: ['startup'],
@@ -219,7 +221,21 @@ module.exports = [{
 function skipSong( chat ) {
 	let player = getPlayer( chat );
 	let playlist = getPlaylist( chat );
-	let nextTrackIndex = Math.floor( Math.random() * playlist.length );
+
+	// Clear out the previous tracks if there are
+	// more than half of the playlist items in the previous tracks
+	if ( player.previousTracks > ( playlist.length / 2 ) ) {
+		player.previousTracks = [];
+	}
+
+	// Push the current track into the previous tracks array
+	player.previousTracks.push( player.currentSongIndex );
+
+	// Find the next track
+	let nextTrackIndex = getNextSongIndex( chat );
+	while ( player.previousTracks.indexOf( nextTrackIndex ) >= 0 ) {
+		nextTrackIndex = getNextSongIndex( chat );
+	}
 
 	player.currentSongIndex = nextTrackIndex;
 	player.skipVotes = [];
@@ -235,6 +251,11 @@ function skipSong( chat ) {
 			youtubeID: currentSong.youtubeID
 		});
 	}
+}
+
+function getNextSongIndex( chat ) {
+	let playlist = getPlaylist( chat );
+	return Math.floor( Math.random() * playlist.length );
 }
 
 /**
@@ -254,9 +275,10 @@ function getYoutubeClient( chat ) {
  * @return {obj} player
  */
 function getPlayer( chat ) {
-	return runtime.brain.get( 'songPlayer' ) || {
+	return runtime.brain.get( 'plugin-youtube-song-player' ) || {
 		playing: false,
-		currentSongIndex: 0
+		currentSongIndex: 0,
+		previousTracks: []
 	};
 }
 
@@ -266,7 +288,7 @@ function getPlayer( chat ) {
  * @param {Client} chat
  */
 function setPlayer( player, chat ) {
-	runtime.brain.set( 'songPlayer', player );
+	runtime.brain.set( 'plugin-youtube-song-player', player );
 }
 
 /**
@@ -275,7 +297,7 @@ function setPlayer( player, chat ) {
  * @return {array}
  */
 function getPlaylist( chat ) {
-	return runtime.brain.get( 'playlist' ) || [];
+	return runtime.brain.get( 'plugin-youtube-playlist' ) || [];
 }
 
 /**
@@ -285,5 +307,5 @@ function getPlaylist( chat ) {
  * @return void
  */
 function setPlaylist( playlist, chat ) {
-	runtime.brain.set( 'playlist', playlist );
+	runtime.brain.set( 'plugin-youtube-playlist', playlist );
 }

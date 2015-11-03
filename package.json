@@ -1,0 +1,14 @@
+{
+  "name": "lctv-bot-youtube-plugin",
+  "version": "1.0.0",
+  "description": "YouTube plugin for the LCTV Bot",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Owen Conti <owen@ohseemedia.com>",
+  "license": "ISC",
+  "dependencies": {
+    "youtube-node": "^1.3.0"
+  }
+}

@@ -63,7 +63,7 @@ module.exports = [{
 		let youtube = getYoutubeClient( chat );
 		youtube.getById( youtubeID, function(err, result) {
 			if ( err ) {
-				console.log( 'Error requesting youtube data:', err );
+				console.log( '[playlist] Error requesting youtube data:', err );
 				return;
 			}
 
@@ -83,7 +83,7 @@ module.exports = [{
 			playlist.push( songObj );
 			setPlaylist( playlist, chat );
 
-			Log.log( `Song: ${videoObj.title} has been added to the playlist by ${stanza.user.username}` );
+			Log.log( `[playlist] Song: ${videoObj.title} has been added to the playlist by ${stanza.user.username}` );
 			chat.replyTo( stanza.user.username, `${videoObj.title} has been added to the playlist!` );
 		} )
 
@@ -221,10 +221,17 @@ module.exports = [{
 function skipSong( chat ) {
 	let player = getPlayer( chat );
 	let playlist = getPlaylist( chat );
+    let playlistLength = playlist.length;
+
+    if ( playlistLength < 3 ) {
+        chat.sendMessage("Not enough songs in the playlist to skip! Add more songs!");
+        return;
+    }
 
 	// Clear out the previous tracks if there are
 	// more than half of the playlist items in the previous tracks
-	if ( player.previousTracks > ( playlist.length / 2 ) ) {
+	if ( player.previousTracks.length > ( playlistLength / 2 ) ) {
+        console.log('[playlist] Clearing previous tracks array');
 		player.previousTracks = [];
 	}
 
@@ -241,9 +248,9 @@ function skipSong( chat ) {
 	player.skipVotes = [];
 	setPlayer( player, chat );
 
-	Log.log( `Skipping song, new index: ${player.currentSongIndex} out of ${playlist.length}`);
+	Log.log( `[playlist] Skipping song, new index: ${player.currentSongIndex} out of ${playlist.length}`);
 
-	if ( player.playing && playlist.length > 0 ) {
+	if ( player.playing && playlistLength > 0 ) {
 		// Player is playing a song
 		let currentSong = playlist[ player.currentSongIndex ];
 		Websocket.sendMessage( chat.credentials.room, {

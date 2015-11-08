@@ -172,21 +172,13 @@ module.exports = [{
     action: function( chat, stanza ) {
 		let player = getPlayer( chat );
 		if ( stanza.user.isModerator() ) {
-			if ( !player.started ) {
-				let playlist = getPlaylist( chat );
-				if ( playlist.length > 0 ) {
-					player.started = true;
-
-					let currentSong = playlist[ player.currentSongIndex ];
-					Websocket.sendMessage( chat.credentials.room, {
-						message: 'youtube-skip',
-						youtubeID: currentSong.youtubeID
-					});
-				}
-			}
-
-			player.playing = true;
+            player.playing = true;
 			setPlayer( player, chat );
+
+			if ( !player.started ) {
+                player.started = true;
+                skipSong( chat );
+            }
 
 			Websocket.sendMessage( chat.credentials.room, {
 				message: 'youtube-play'

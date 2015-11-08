@@ -6,6 +6,11 @@ module.exports = {
 	}],
 	html: '<div id="player"></div>',
 	func: function( socket, username ) {
+        socket.send( JSON.stringify({
+            message: 'isPlaying',
+            data: false
+        }) );
+
 		var yt;
 		function onYouTubeIframeAPIReady() {
 			yt = new YT.Player('player', {

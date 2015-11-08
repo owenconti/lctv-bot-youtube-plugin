@@ -177,6 +177,7 @@ module.exports = [{
 
 			if ( !player.started ) {
                 player.started = true;
+                setPlayer( player, chat );
                 skipSong( chat );
             }
 
@@ -189,12 +190,9 @@ module.exports = [{
     types: ['websocket'],
     regex: /^isPlaying$/,
     action: function( chat, messageObj ) {
-		if ( messageObj.data ) {
-			let player = getPlayer( chat );
-			player.started = true;
-			player.playing = true;
-			setPlayer( player, chat );
-		}
+		let player = getPlayer( chat );
+		player.started = player.playing = messageObj.data;
+		setPlayer( player, chat );
     }
 }, {
 	// Skips to the next song when the player is finished playing a song
@@ -223,8 +221,8 @@ function skipSong( chat ) {
 	// Clear out the previous tracks if there are
 	// more than half of the playlist items in the previous tracks
 	if ( player.previousTracks.length > ( playlistLength / 2 ) ) {
-        console.log('[playlist] Clearing previous tracks array');
-		player.previousTracks = [];
+        console.log('[playlist] Removing first track from previousTracks array');
+		player.previousTracks.shift();
 	}
 
 	// Push the current track into the previous tracks array

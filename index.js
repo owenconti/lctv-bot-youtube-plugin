@@ -14,9 +14,11 @@ const YouTube = require('youtube-node');
 const runtime = require('../../utils/Runtime');
 const Log = require('../../utils/Log');
 const Websocket = require('../../utils/Websocket');
+const Pastebin = require('../../utils/Pastebin');
 const pluginSettings = require('./settings.json');
 const requiredVotesToSkip = pluginSettings.requiredVotesToSkip || 3;
 const requestSongRegex = new RegExp( /^(!|\/)request\s(.+)$/ );
+const playSongRegex = new RegExp( /^(!|\/)playsong\s(\d+)$/ );
 
 const brainKey = 'plugin-youtube';
 
@@ -185,6 +187,72 @@ module.exports = [{
 				message: 'youtube-play'
 			});
 		}
+    }
+}, {
+	// List the playlist
+	name: '!playlist',
+	help: 'Lists the tracks in the playlist.',
+    types: ['message'],
+    regex: /^(!|\/)playlist$/,
+    action: function( chat, stanza ) {
+        // Build an array of track names from the playlist
+        let playlist = getPlaylist( chat );
+        let tracks = playlist.map( (track, i) => {
+            return `${i}. ${track.title} - https://www.youtube.com/watch?v=${track.youtubeID}`;
+        } );
+
+        // Compare the trackNames to the brain's stored version
+        let storedPlaylistTracks = runtime.brain.get( 'plugin-youtube-playlist-tracks' ) || {
+            link: '',
+            tracks: []
+        };
+
+        if ( storedPlaylistTracks.tracks.toString() != tracks.toString() ) {
+            // Generate a new paste on pastebin
+            Pastebin.createPaste( `${runtime.credentials.username} - LCTV Bot Playlist Tracks`, tracks.join('\n'), (link) => {
+                storedPlaylistTracks.link = link;
+                storedPlaylistTracks.tracks = tracks;
+                runtime.brain.set( 'plugin-youtube-playlist-tracks', storedPlaylistTracks );
+
+                chat.sendMessage('Playlist tracks: ' + storedPlaylistTracks.link);
+            } );
+            return;
+        }
+
+        chat.sendMessage('Playlist tracks: ' + storedPlaylistTracks.link);
+    }
+}, {
+	// Play specified song by index
+	name: '!playsong {playlistIndex}',
+	help: 'Plays the specified song by the index.',
+    types: ['message'],
+    regex: playSongRegex,
+    action: function( chat, stanza ) {
+        if ( stanza.user.isModerator() ) {
+            let match = playSongRegex.exec( stanza.message );
+            let playlistIndex = parseInt( match[2], 10 );
+            let playlist = getPlaylist(chat);
+            let player = getPlayer(chat);
+
+            if ( playlistIndex <= playlist.length - 1 ) {
+                player.currentSongIndex = playlistIndex;
+                player.skipVotes = [];
+                setPlayer( player, chat );
+
+                Log.log( `[playlist] Skipping song, new index: ${player.currentSongIndex} out of ${playlist.length}`);
+
+                if ( player.playing && playlist.length > 0 ) {
+                    // Player is playing a song
+                    let currentSong = playlist[ player.currentSongIndex ];
+                    Websocket.sendMessage( chat.credentials.room, {
+                        message: 'youtube-skip',
+                        youtubeID: currentSong.youtubeID
+                    });
+                }
+            } else {
+                chat.replyTo( stanza.user.username, 'Playlist index out of range!' );
+            }
+        }
     }
 }, {
     types: ['websocket'],
